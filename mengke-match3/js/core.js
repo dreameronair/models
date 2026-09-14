@@ -76,7 +76,7 @@
   };
 
   /**
-   * 极简补间引擎。每个 to() 返回 Promise, 便于用 async/await 串联消除流程。
+   * 极简补间引擎。每个 to() 返回 Promise, 便于把消除流程串成链。
    * cancelAll() 会立即兑现所有未完成的 Promise, 调用方需要用 generation 令牌
    * 判断自己是否已经过期(见 Game.prototype.gen)。
    */

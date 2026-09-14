@@ -48,6 +48,7 @@
     this.particles = [];
     this.floaters = [];
     this.effects = [];
+    this.specialBuffer = [];   // 复用, 避免每帧分配数组
 
     this.lastSwap = null;
     this.handlers = {};
@@ -488,7 +489,7 @@
     }
     if (cleared.length) {
       this.floaters.push({
-        x: cx / cleared.length,
+        x: Util.clamp(cx / cleared.length, this.tile * 1.2, this.size - this.tile * 1.2),
         y: cy / cleared.length,
         text: '+' + gained,
         sub: cascade > 1 ? ('连锁 x' + cascade) : '',
@@ -535,9 +536,10 @@
     tile.special = creation.special;
     tile.type = creation.type;
     Sound.create();
+    // 抬高一格, 避免和同时出现的飘分文字叠在一起
     this.floaters.push({
-      x: tile.x,
-      y: tile.y - this.tile * 0.55,
+      x: Util.clamp(tile.x, this.tile * 1.4, this.size - this.tile * 1.4),
+      y: tile.y - this.tile * 1.15,
       text: MK.SPECIAL_LABEL[creation.special],
       sub: '',
       life: 0,
@@ -644,7 +646,8 @@
       stars: stars,
       score: this.score,
       target: def.target,
-      level: this.levelIndex
+      level: this.levelIndex,
+      gen: this.gen
     });
   };
 
@@ -837,12 +840,13 @@
     this.drawSelection(ctx);
 
     var self = this;
-    var specials = [];
+    var specials = this.specialBuffer;
+    specials.length = 0;
     this.board.forEach(function (tile) {
       if (tile.special) specials.push(tile);
       else self.drawTile(tile);
     });
-    // 特殊棋子最后画, 保证发光不被遮住
+    // 特殊棋子最后画, 保证光环不被相邻棋子盖住
     for (var s = 0; s < specials.length; s++) this.drawTile(specials[s]);
 
     this.drawEffects(ctx);
@@ -893,29 +897,42 @@
     var half = s / 2;
     var corner = s * 0.3;
 
+    // 特殊棋子在底板后面加一层呼吸的金色光环
+    if (tile.special) {
+      var pulse = 0.72 + 0.28 * Math.sin(this.time * 0.006);
+      var glow = ctx.createRadialGradient(0, 0, s * 0.26, 0, 0, s * 0.78);
+      glow.addColorStop(0, 'rgba(255,231,120,' + (0.6 * pulse).toFixed(3) + ')');
+      glow.addColorStop(1, 'rgba(255,196,50,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, s * 0.78, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // 底板
     var grad = ctx.createLinearGradient(0, -half, 0, half);
-    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
-    grad.addColorStop(1, rgba(ch.color, 0.5));
+    grad.addColorStop(0, 'rgba(255,255,255,0.96)');
+    grad.addColorStop(0.55, rgba(ch.light, 0.95));
+    grad.addColorStop(1, rgba(ch.color, 0.78));
     Util.roundRect(ctx, -half, -half, s, s, corner);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // 方向闪电的条纹画在角色下面
+    // 方向闪电的能量条纹垫在角色下面
     if (tile.special === 'row' || tile.special === 'col') {
       ctx.save();
       Util.roundRect(ctx, -half, -half, s, s, corner);
       ctx.clip();
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillStyle = 'rgba(255,246,176,0.95)';
       for (var k = -1; k <= 1; k += 2) {
-        if (tile.special === 'row') ctx.fillRect(-half, k * s * 0.26 - s * 0.045, s, s * 0.09);
-        else ctx.fillRect(k * s * 0.26 - s * 0.045, -half, s * 0.09, s);
+        if (tile.special === 'row') ctx.fillRect(-half, k * s * 0.3 - s * 0.05, s, s * 0.1);
+        else ctx.fillRect(k * s * 0.3 - s * 0.05, -half, s * 0.1, s);
       }
       ctx.restore();
     }
 
-    ctx.lineWidth = Math.max(1.2, s * 0.045);
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = Math.max(1.2, s * (tile.special ? 0.06 : 0.045));
+    ctx.strokeStyle = tile.special ? '#ffce34' : 'rgba(255,255,255,0.92)';
     Util.roundRect(ctx, -half, -half, s, s, corner);
     ctx.stroke();
 
@@ -925,38 +942,66 @@
       ctx.drawImage(img, -sp / 2, -sp / 2, sp, sp);
     }
 
-    if (tile.special === 'bomb') {
-      ctx.fillStyle = 'rgba(40,26,64,0.9)';
+    if (tile.special) this.drawSpecialBadge(ctx, tile, s);
+    ctx.restore();
+  };
+
+  /** 特殊棋子的标识画在角色之上, 保证一眼能认出来。 */
+  Game.prototype.drawSpecialBadge = function (ctx, tile, s) {
+    var half = s / 2;
+
+    if (tile.special === 'row' || tile.special === 'col') {
+      // 指向消除方向的双箭头
+      ctx.fillStyle = '#ffb300';
+      ctx.strokeStyle = '#fffbe6';
+      ctx.lineWidth = s * 0.03;
+      for (var side = -1; side <= 1; side += 2) {
+        ctx.save();
+        if (tile.special === 'row') ctx.translate(side * half * 0.82, 0);
+        else { ctx.translate(0, side * half * 0.82); ctx.rotate(Math.PI / 2); }
+        ctx.scale(side, 1);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.09, -s * 0.13);
+        ctx.lineTo(s * 0.07, 0);
+        ctx.lineTo(-s * 0.09, s * 0.13);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    } else if (tile.special === 'bomb') {
+      ctx.fillStyle = 'rgba(46,28,72,0.92)';
       ctx.beginPath();
-      ctx.arc(half * 0.56, half * 0.56, s * 0.17, 0, Math.PI * 2);
+      ctx.arc(half * 0.55, half * 0.55, s * 0.19, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#ffd84d';
+      ctx.strokeStyle = '#ffce34';
       ctx.lineWidth = Math.max(1, s * 0.035);
-      ctx.beginPath();
-      ctx.arc(half * 0.56, half * 0.56, s * 0.17, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = '#ffd84d';
+      // 中间的星形火花
+      ctx.fillStyle = '#ffe94d';
+      ctx.save();
+      ctx.translate(half * 0.55, half * 0.55);
       ctx.beginPath();
-      ctx.arc(half * 0.56, half * 0.56, s * 0.055, 0, Math.PI * 2);
+      for (var i = 0; i < 8; i++) {
+        var rad = i % 2 === 0 ? s * 0.11 : s * 0.045;
+        var ang = Math.PI / 4 * i - Math.PI / 2;
+        if (i === 0) ctx.moveTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+        else ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+      }
+      ctx.closePath();
       ctx.fill();
+      ctx.restore();
     } else if (tile.special === 'rainbow') {
       var colors = ['#ff5f8f', '#ffb43d', '#ffe94d', '#6fdd8a', '#4fb6ff', '#b184ff'];
-      ctx.lineWidth = s * 0.075;
+      ctx.lineWidth = s * 0.085;
       var spin = this.time * 0.002;
-      for (var i = 0; i < colors.length; i++) {
-        ctx.strokeStyle = colors[i];
+      for (var c = 0; c < colors.length; c++) {
+        ctx.strokeStyle = colors[c];
         ctx.beginPath();
-        ctx.arc(0, 0, half * 0.96, spin + i * Math.PI / 3, spin + (i + 1) * Math.PI / 3);
+        ctx.arc(0, 0, half * 0.94, spin + c * Math.PI / 3, spin + (c + 1) * Math.PI / 3);
         ctx.stroke();
       }
-    } else if (tile.special === 'row' || tile.special === 'col') {
-      ctx.strokeStyle = '#ffe94d';
-      ctx.lineWidth = Math.max(1.2, s * 0.05);
-      Util.roundRect(ctx, -half, -half, s, s, corner);
-      ctx.stroke();
     }
-
-    ctx.restore();
   };
 
   Game.prototype.drawEffects = function (ctx) {
