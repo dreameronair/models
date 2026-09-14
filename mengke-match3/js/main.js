@@ -103,6 +103,26 @@
       UI.updateSoundChips();
     });
 
+    var skinBusy = false;
+    el('btnSkin').addEventListener('click', function () {
+      if (skinBusy) return;
+      Sound.click();
+      var next = Assets.skin === 'official' ? 'original' : 'official';
+      skinBusy = true;
+      UI.updateSkinChip(true);
+      Assets.setSkin(next).then(function () {
+        skinBusy = false;
+        UI.forgetSpriteCache();
+        UI.renderHomePets();
+        UI.updateSkinChip(false);
+        if (next === 'official') {
+          UI.toast(Assets.remoteFailed.length ? '部分官方形象没下来，先用原创的' : '换成官方萌可啦');
+        } else {
+          UI.toast('换成原创萌宠啦');
+        }
+      });
+    });
+
     var navButtons = doc.querySelectorAll('[data-nav]');
     for (var i = 0; i < navButtons.length; i++) {
       navButtons[i].addEventListener('click', function () {
@@ -196,12 +216,23 @@
     var fill = el('loadingFill');
     var tip = el('loadingTip');
 
+    // 先加载内置素材(占进度条前 60%), 再按设置补上在线形象(后 40%)。
+    // 在线图失败也照样进游戏, 只是继续用内置形象。
     Assets.load(function (done, total) {
-      fill.style.width = Math.round(done / total * 100) + '%';
+      fill.style.width = Math.round(done / total * 60) + '%';
     }).then(function () {
+      if (Assets.skin === 'original') return;
+      tip.textContent = '正在加载官方萌可形象…';
+      return Assets.loadSkin(Assets.skin, function (done, total) {
+        fill.style.width = Math.round(60 + done / total * 40) + '%';
+      });
+    }).then(function () {
+      fill.style.width = '100%';
       if (Assets.images.background) doc.getElementById('app').classList.add('has-bg');
       if (Assets.missing.length) {
         tip.textContent = '部分素材缺失，已使用备用形象';
+      } else if (Assets.skin !== 'original' && Assets.remoteFailed.length) {
+        tip.textContent = '官方形象没下全，已用原创形象补上';
       }
 
       game = new MK.Game(el('board'));
@@ -220,6 +251,7 @@
 
       UI.renderHomePets();
       UI.updateSoundChips();
+      UI.updateSkinChip(false);
       bindEvents();
       Wechat.setupShare(Wechat.shareInfo());
 

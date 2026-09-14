@@ -176,7 +176,7 @@ body {
   color: #7c3f75;
 }
 
-.chips { display: flex; gap: 8px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 
 .chip {
   border: 0;
@@ -184,7 +184,7 @@ body {
   font-size: 13px;
   font-weight: 700;
   color: #7c3f75;
-  padding: 7px 14px;
+  padding: 7px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 3px 0 rgba(190, 120, 170, 0.35);
@@ -193,6 +193,16 @@ body {
 .chip.is-off {
   color: #b48ea9;
   background: rgba(255, 255, 255, 0.42);
+}
+
+.chip.is-busy {
+  color: #b48ea9;
+  animation: chip-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes chip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* ---------- 按钮 ---------- */

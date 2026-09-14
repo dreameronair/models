@@ -19,14 +19,15 @@
     props: { hammer: 2, shuffle: 1 }
   };
 
-  // 六位原创魔法萌宠。sprite 对应 assets/characters/<sprite>.png
+  // 六个角色。sprite 对应 assets/characters/<sprite>.png(原创形象),
+  // official 是切到官方形象时显示的名字, 在线图地址见 js/skins.js。
   var CHARACTERS = [
-    { id: 'rabbit',  name: '蜜莉',  sprite: 'rabbit',  color: '#ff74b3', light: '#ffd9ec', dark: '#d93a84' },
-    { id: 'cat',     name: '露娜',  sprite: 'cat',     color: '#4bb4ff', light: '#cfeaff', dark: '#1a76c9' },
-    { id: 'bear',    name: '布丁',  sprite: 'bear',    color: '#ffc32e', light: '#fff0c4', dark: '#d99400' },
-    { id: 'dragon',  name: '青青',  sprite: 'dragon',  color: '#57d18b', light: '#d6f7e3', dark: '#1f9c58' },
-    { id: 'unicorn', name: '星梦',  sprite: 'unicorn', color: '#b184ff', light: '#e9dcff', dark: '#7643d6' },
-    { id: 'fox',     name: '火火',  sprite: 'fox',     color: '#ff894a', light: '#ffdcc8', dark: '#d95515' }
+    { id: 'rabbit',  name: '蜜莉',  official: '爱心萌可', sprite: 'rabbit',  color: '#ff74b3', light: '#ffd9ec', dark: '#d93a84' },
+    { id: 'cat',     name: '露娜',  official: '正正萌可', sprite: 'cat',     color: '#4bb4ff', light: '#cfeaff', dark: '#1a76c9' },
+    { id: 'bear',    name: '布丁',  official: '勇气萌可', sprite: 'bear',    color: '#ffc32e', light: '#fff0c4', dark: '#d99400' },
+    { id: 'dragon',  name: '青青',  official: '盼盼萌可', sprite: 'dragon',  color: '#57d18b', light: '#d6f7e3', dark: '#1f9c58' },
+    { id: 'unicorn', name: '星梦',  official: '唱唱萌可', sprite: 'unicorn', color: '#b184ff', light: '#e9dcff', dark: '#7643d6' },
+    { id: 'fox',     name: '火火',  official: '娜娜萌可', sprite: 'fox',     color: '#ff894a', light: '#ffdcc8', dark: '#d95515' }
   ];
 
   // types: 本关出现的角色种类数(越少越容易凑对)

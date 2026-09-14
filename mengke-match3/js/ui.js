@@ -21,9 +21,28 @@
     toastTimer: null
   };
 
+  // <img> 用的地址。当前形象是在线图时把画布转成 dataURL, 转换结果缓存起来复用。
+  var srcCache = {};
+
   function spritePath(typeIndex) {
-    return 'assets/characters/' + CHARACTERS[typeIndex].sprite + '.png';
+    var character = CHARACTERS[typeIndex];
+    var local = 'assets/characters/' + character.sprite + '.png';
+    var sprite = MK.Assets.spriteById(character.id);
+    if (!sprite) return local;
+    if (sprite.tagName === 'IMG') return sprite.src || local;
+
+    var key = MK.Assets.skin + '-' + character.id;
+    if (!srcCache[key]) {
+      try {
+        srcCache[key] = sprite.toDataURL('image/png');
+      } catch (e) {
+        return local;
+      }
+    }
+    return srcCache[key];
   }
+
+  UI.forgetSpriteCache = function () { srcCache = {}; };
 
   /* ---------------- 页面切换 ---------------- */
 
@@ -175,7 +194,7 @@
   UI.renderHomePets = function () {
     var html = '';
     for (var i = 0; i < CHARACTERS.length; i++) {
-      html += '<img src="' + spritePath(i) + '" alt="' + CHARACTERS[i].name + '">';
+      html += '<img src="' + spritePath(i) + '" alt="' + MK.Assets.displayName(CHARACTERS[i]) + '">';
     }
     el('homePets').innerHTML = html;
   };
@@ -199,6 +218,19 @@
     el('btnBgm').classList.toggle('is-off', !Sound.bgmOn);
     el('btnSfx').textContent = Sound.sfxOn ? '音效 开' : '音效 关';
     el('btnBgm').textContent = Sound.bgmOn ? '音乐 开' : '音乐 关';
+  };
+
+  UI.updateSkinChip = function (loading) {
+    var chip = el('btnSkin');
+    if (!chip) return;
+    chip.classList.toggle('is-busy', !!loading);
+    if (loading) {
+      chip.textContent = '形象 加载中';
+      return;
+    }
+    var official = MK.Assets.skin === 'official';
+    chip.classList.toggle('is-off', !official);
+    chip.textContent = official ? '形象 官方' : '形象 原创';
   };
 
   /* ---------------- 关卡选择 ---------------- */
