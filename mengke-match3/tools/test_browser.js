@@ -186,6 +186,11 @@ async function touchSwipe(page) {
   });
   const page = await context.newPage();
 
+  // 主流程钉在原创形象上: 不碰外网, 结果可复现。在线形象另有专门一节测。
+  await page.addInitScript(() => {
+    localStorage.setItem('mengke-match3-v1', JSON.stringify({ skin: 'original' }));
+  });
+
   const consoleErrors = [];
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -630,6 +635,8 @@ async function touchSwipe(page) {
   check('全程没有资源请求失败', failedRequests.length === 0,
     failedRequests.slice(0, 3).join(' | '));
 
+  await runSkinTests(browser, shot);
+
   await browser.close();
 
   console.log('\n截图输出: ' + SHOT_DIR);
@@ -643,3 +650,129 @@ async function touchSwipe(page) {
   console.error('\n测试脚本异常:', err);
   process.exit(2);
 });
+
+/* 1x1 的透明 PNG, 用来冒充防盗链站点返回的 404 占位图 */
+const PLACEHOLDER_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+  'base64');
+
+const CDN_GLOB = '**://static.wikia.nocookie.net/**';
+
+async function newSkinContext(browser, skin) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    userAgent: WECHAT_UA,
+    locale: 'zh-CN'
+  });
+  const page = await context.newPage();
+  await page.addInitScript((s) => {
+    localStorage.setItem('mengke-match3-v1', JSON.stringify({ skin: s }));
+  }, skin);
+  return { context, page };
+}
+
+const skinState = (page) => page.evaluate(() => ({
+  skin: MK.Assets.skin,
+  loaded: Object.keys(MK.Assets.remote),
+  failed: MK.Assets.remoteFailed.slice(),
+  // 归一化后应该是统一尺寸的 canvas
+  shapes: Object.keys(MK.Assets.remote).map((id) => {
+    const s = MK.Assets.remote[id];
+    return s.tagName + ':' + s.width + 'x' + s.height;
+  }),
+  usesRemote: MK.CHARACTERS.every((ch, i) =>
+    MK.Assets.sprite(i) === MK.Assets.remote[ch.id]),
+  usesLocal: MK.CHARACTERS.every((ch, i) =>
+    MK.Assets.sprite(i) === MK.Assets.images[ch.id]),
+  cacheKeys: Object.keys(localStorage)
+    .filter((k) => /^mengke-skin-v\d+-official-/.test(k)).length
+}));
+
+async function boot(page) {
+  await page.goto(BASE, { waitUntil: 'load' });
+  await page.waitForSelector('#screen-home.is-active', { timeout: 30000 });
+}
+
+/** 在线形象: 加载、归一化、缓存、以及各种失败情形下回退到原创形象。 */
+async function runSkinTests(browser, shot) {
+  section('在线官方形象');
+
+  const total = 6;
+  const { context, page } = await newSkinContext(browser, 'official');
+  const errors = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+
+  await boot(page);
+  let st = await skinState(page);
+  check('官方形象 6 张全部加载成功',
+    st.loaded.length === total && st.failed.length === 0,
+    '成功 ' + st.loaded.length + ', 失败 ' + st.failed.join(','));
+  check('在线图被归一化成同尺寸画布',
+    st.shapes.length === total && st.shapes.every((s) => s === 'CANVAS:256x256'),
+    st.shapes.join(' '));
+  check('棋盘取用的是在线形象', st.usesRemote);
+  check('在线图已写入本地缓存', st.cacheKeys === total, '缓存 ' + st.cacheKeys + ' 项');
+
+  await page.click('#btnPlay');
+  await page.waitForSelector('#screen-game.is-active');
+  await page.waitForTimeout(1200);
+  await shot('14-skin-official-board');
+
+  // 首页的形象开关来回切一次
+  await page.click('#btnPause');
+  await page.click('[data-action="home"]');
+  await page.waitForSelector('#screen-home.is-active');
+  await page.click('#btnSkin');
+  await page.waitForFunction(() => MK.Assets.skin === 'original', { timeout: 15000 });
+  st = await skinState(page);
+  check('切到原创形象后棋盘改用本地图', st.usesLocal && st.loaded.length === 0);
+  check('形象按钮显示当前是原创',
+    (await page.textContent('#btnSkin')).includes('原创'));
+
+  await page.click('#btnSkin');
+  await page.waitForFunction(() => MK.Assets.skin === 'official'
+    && Object.keys(MK.Assets.remote).length === 6, { timeout: 20000 });
+  check('切回官方形象能从缓存立刻恢复', (await skinState(page)).usesRemote);
+
+  // 缓存写好之后断网重开, 应该照样是官方形象
+  await page.route(CDN_GLOB, (route) => route.abort());
+  await boot(page);
+  st = await skinState(page);
+  check('断网后靠缓存仍能显示官方形象',
+    st.loaded.length === total && st.failed.length === 0,
+    '成功 ' + st.loaded.length);
+  check('切换与断网过程无 JS 报错', errors.length === 0, errors.slice(0, 2).join(' | '));
+  await context.close();
+
+  // 无缓存 + 请求全挂: 应当静默回退到原创形象, 游戏照常可玩
+  const offline = await newSkinContext(browser, 'official');
+  await offline.page.route(CDN_GLOB, (route) => route.abort());
+  await boot(offline.page);
+  st = await skinState(offline.page);
+  check('首次加载就断网时回退到原创形象',
+    st.failed.length === total && st.usesLocal,
+    '失败 ' + st.failed.length + ', 用本地 ' + st.usesLocal);
+  await offline.page.click('#btnPlay');
+  await offline.page.waitForSelector('#screen-game.is-active');
+  const playable = await offline.page.evaluate(() => !!window.__MK_GAME && !MK.Assets.missing.length);
+  check('回退后仍能正常进入关卡', playable);
+  await offline.context.close();
+
+  // 防盗链站点常把 404 也回一张小占位图, 浏览器会当成加载成功 —— 必须识别出来
+  const bogus = await newSkinContext(browser, 'official');
+  await bogus.page.route(CDN_GLOB, (route) => route.fulfill({
+    status: 404,
+    contentType: 'image/png',
+    headers: { 'access-control-allow-origin': '*' },
+    body: PLACEHOLDER_PNG
+  }));
+  await boot(bogus.page);
+  st = await skinState(bogus.page);
+  check('把防盗链返回的占位图判为失败',
+    st.failed.length === total && st.usesLocal,
+    '失败 ' + st.failed.length + ', 用本地 ' + st.usesLocal);
+  const noBogusCache = (await skinState(bogus.page)).cacheKeys === 0;
+  check('占位图不会被写进缓存', noBogusCache);
+  await bogus.context.close();
+}
