@@ -306,7 +306,7 @@
     }
 
     CHARACTERS.forEach(function (character) {
-      var task = loadImage('assets/characters/' + character.sprite + '.png')
+      var task = loadImage(MK.assetUrl('assets/characters/' + character.sprite + '.png'))
         .then(function (img) {
           Assets.images[character.id] = img;
         })
@@ -319,7 +319,7 @@
     });
 
     tasks.push(
-      loadImage('assets/ui/background.jpg')
+      loadImage(MK.assetUrl('assets/ui/background.jpg'))
         .then(function (img) { Assets.images.background = img; })
         .catch(function () { Assets.missing.push('background.jpg'); })
         .then(step)

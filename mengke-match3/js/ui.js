@@ -26,7 +26,7 @@
 
   function spritePath(typeIndex) {
     var character = CHARACTERS[typeIndex];
-    var local = 'assets/characters/' + character.sprite + '.png';
+    var local = MK.assetUrl('assets/characters/' + character.sprite + '.png');
     var sprite = MK.Assets.spriteById(character.id);
     if (!sprite) return local;
     if (sprite.tagName === 'IMG') return sprite.src || local;

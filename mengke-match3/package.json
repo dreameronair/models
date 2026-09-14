@@ -7,7 +7,8 @@
     "serve": "python3 -m http.server 8123",
     "test": "node tools/test_board.js",
     "test:browser": "node tools/test_browser.js",
-    "assets": "python3 tools/make_assets.py"
+    "assets": "python3 tools/make_assets.py",
+    "build:single": "python3 tools/build_single.py"
   },
   "devDependencies": {
     "playwright": "^1.56.0"
