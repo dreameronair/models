@@ -8,6 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 
 const BASE = process.argv[2] || 'http://127.0.0.1:8123/';
@@ -636,6 +637,7 @@ async function touchSwipe(page) {
     failedRequests.slice(0, 3).join(' | '));
 
   await runSkinTests(browser, shot);
+  await runSingleFileTests(browser);
 
   await browser.close();
 
@@ -775,4 +777,83 @@ async function runSkinTests(browser, shot) {
   const noBogusCache = (await skinState(bogus.page)).cacheKeys === 0;
   check('占位图不会被写进缓存', noBogusCache);
   await bogus.context.close();
+}
+
+/**
+ * 单文件版: 现打一份, 用 file:// 打开跑一遍。
+ * 这一节主要防的是"加了新脚本或新图片却忘了改打包脚本"——那样线上没事,
+ * 单文件版却会缺东西。同时确认 file:// 下画布不会因跨域被污染。
+ */
+async function runSingleFileTests(browser) {
+  section('单文件版(file:// 打开)');
+
+  const repo = path.join(__dirname, '..');
+  const out = path.join(repo, 'dist', 'mengke-match3.html');
+  try {
+    execFileSync('python3', [path.join('tools', 'build_single.py')],
+      { cwd: repo, stdio: 'pipe' });
+  } catch (e) {
+    check('打包脚本执行成功', false, (e.stderr || e.message || '').toString().slice(0, 200));
+    return;
+  }
+  check('打包脚本执行成功', fs.existsSync(out));
+
+  const html = fs.readFileSync(out, 'utf8');
+  check('没有残留的外部 css/js 引用',
+    !/<script src=|<link rel="stylesheet"/.test(html));
+  check('图片已内联成 dataURL',
+    (html.match(/data:image\/(png|jpeg);base64,/g) || []).length >= 8);
+
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    userAgent: WECHAT_UA,
+    locale: 'zh-CN'
+  });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (err) => errors.push(err.message));
+  page.on('requestfailed', (req) => {
+    // 在线官方形象另有兜底, 这里只关心本地资源
+    if (!req.url().includes('wikia')) errors.push('请求失败 ' + req.url().slice(0, 60));
+  });
+
+  await page.goto('file://' + out, { waitUntil: 'load', timeout: 60000 });
+  await page.waitForSelector('#screen-home.is-active', { timeout: 45000 });
+  await page.waitForFunction(() => window.__MK_GAME, { timeout: 45000 });
+
+  const st = await page.evaluate(() => ({
+    missing: MK.Assets.missing.slice(),
+    hasBg: !!MK.Assets.images.background,
+    petSrc: (document.querySelector('.home-pets img') || {}).src || '',
+    remote: Object.keys(MK.Assets.remote).length,
+    storage: (function () {
+      try {
+        localStorage.setItem('__probe', '1');
+        localStorage.removeItem('__probe');
+        return true;
+      } catch (e) { return false; }
+    })()
+  }));
+  check('内联素材全部就位', st.missing.length === 0 && st.hasBg, st.missing.join(','));
+  check('首页角色图用的是内联数据', st.petSrc.indexOf('data:image') === 0,
+    st.petSrc.slice(0, 30));
+  check('file:// 下 localStorage 可用', st.storage);
+  check('file:// 下仍能取到在线官方形象', st.remote === 6, '拿到 ' + st.remote + '/6');
+
+  // file:// 下画布容易被跨域污染, 污染了就读不了像素, 在线形象的裁切描边会失效
+  await page.click('#btnPlay');
+  await page.waitForSelector('#screen-game.is-active');
+  await page.waitForTimeout(1200);
+  const canvasOk = await page.evaluate(() => {
+    try {
+      const c = document.getElementById('board');
+      c.getContext('2d').getImageData(0, 0, 2, 2);
+      return true;
+    } catch (e) { return false; }
+  });
+  check('棋盘画布没有被跨域污染', canvasOk);
+  check('单文件版无 JS 报错与本地资源失败', errors.length === 0, errors.slice(0, 3).join(' | '));
+
+  await context.close();
 }

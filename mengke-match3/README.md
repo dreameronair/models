@@ -55,7 +55,7 @@
 
 ## 本地运行
 
-必须用 HTTP 服务打开，不能直接双击 `index.html`（Canvas 读图会被浏览器的 file:// 跨域策略拦住）。
+多文件版必须用 HTTP 服务打开，不能直接双击 `index.html`（Canvas 读图会被浏览器的 file:// 跨域策略拦住）。
 
 ```bash
 cd mengke-match3
@@ -64,6 +64,22 @@ python3 -m http.server 8123
 ```
 
 调手机效果时，用 Chrome DevTools 的设备模拟（iPhone SE 320×568 到 iPhone 14 Pro Max 都验证过），或者让手机连同一个局域网访问电脑 IP。
+
+## 单文件版
+
+`dist/mengke-match3.html` 把 CSS、JS 和所有图片全部内嵌在一个文件里，**双击就能玩，不需要服务器**，也方便直接发给别人。
+
+```bash
+npm run build:single      # 重新打包，产出 dist/mengke-match3.html
+```
+
+打包脚本 `tools/build_single.py` 做三件事：把 `css/style.css` 和九个 js 按原顺序内联；把角色图缩到 192×192 再量化成调色板 PNG（单张 90KB → 10KB）、背景图重新压成 JPEG，然后转成 dataURL 写进 `window.MK_INLINE`；最后去掉指向外部文件的标签。整个文件约 283KB。
+
+`js/core.js` 里的 `MK.assetUrl(path)` 是唯一的转换点——有 `MK_INLINE` 就返回内联数据，没有就原样返回路径，所以两个版本共用同一套代码。
+
+之所以内联后反而能直接双击打开，是因为 dataURL 不算跨域来源，画布不会被污染，`getImageData` 照常可用（在线形象的裁切描边依赖这个）。
+
+奇妙萌可官方形象**没有**打进文件里——那属于把有版权的美术资源再分发。单文件版仍然是在线取官方图，没网时自动回退到内嵌的原创形象，照样能玩。
 
 ## 部署到微信 H5
 
@@ -133,11 +149,13 @@ mengke-match3/
 │   ├── ui.js               页面切换、HUD、弹层
 │   ├── wechat.js           微信适配与分享
 │   └── main.js             启动入口与事件绑定
+├── dist/mengke-match3.html   单文件版（npm run build:single 产出）
 ├── assets/
 │   ├── characters/*.png    六个角色精灵（可替换）
 │   └── ui/                 背景图与分享缩略图
 └── tools/
     ├── make_assets.py      角色立绘抠图 → 游戏精灵
+    ├── build_single.py     打包成单文件 HTML
     ├── test_board.js       消除逻辑无头测试
     └── test_browser.js     Playwright 端到端测试
 ```
@@ -174,6 +192,8 @@ npm run test:browser   # 端到端，78 项，需要先 npm i && npx playwright 
 `tools/test_browser.js` 用移动端视口 + 微信 UA 真实驱动 DOM：点选和滑动两种操作、无效交换回弹不扣步数、四种魔法棋子在确定性棋盘上的生成位置、合体技、道具、暂停、通关与失败结算、关卡解锁、小屏布局，并断言全程没有 console 报错和资源加载失败。跑完会把截图输出到 `.shots/`。
 
 主流程钉在原创形象上，不碰外网，结果可复现。在线形象另有一节专门测：六张图加载并归一化、写入缓存、断网后靠缓存恢复、首页开关来回切，以及三种失败情形都要回退到原创形象（请求全挂、防盗链返回占位图、占位图不得入缓存）。失败分支用 Playwright 拦路由模拟，只有"六张图正常加载"这一项需要真的连外网。
+
+还有一节测单文件版：现打一份，用 `file://` 打开，断言没有残留的外部引用、内联素材齐全、localStorage 可用、画布没被跨域污染。主要防的是加了新脚本或新图片却忘了改打包脚本——那样多文件版没事，单文件版却会缺东西。
 
 ## 重新生成角色素材
 
