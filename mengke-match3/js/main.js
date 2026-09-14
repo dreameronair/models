@@ -211,7 +211,11 @@
       game.on('toast', function (message) { UI.toast(message); });
       game.on('propmode', function (mode) { UI.setPropMode(mode); });
       game.on('finish', function (info) {
-        global.setTimeout(function () { UI.openResult(info); }, 620);
+        // 留一点时间让最后一次消除演完; 期间若已重开关卡就不再弹结算
+        global.setTimeout(function () {
+          if (info.gen !== game.gen) return;
+          UI.openResult(info);
+        }, 620);
       });
 
       UI.renderHomePets();
