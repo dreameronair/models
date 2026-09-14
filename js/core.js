@@ -164,6 +164,14 @@
     }
   };
 
+  // 单文件版(tools/build_single.py 产出)会在本脚本之前塞一份 window.MK_INLINE,
+  // 把 'assets/xxx.png' 映射成内联的 dataURL。普通版这里是空表, assetUrl 原样返回。
+  var INLINE = global.MK_INLINE || {};
+
+  function assetUrl(path) {
+    return Object.prototype.hasOwnProperty.call(INLINE, path) ? INLINE[path] : path;
+  }
+
   var Storage = {
     key: 'mengke-match3-v1',
     read: function () {
@@ -198,6 +206,7 @@
     Ease: Ease,
     Anim: Anim,
     Util: Util,
-    Storage: Storage
+    Storage: Storage,
+    assetUrl: assetUrl
   };
 })(window);
