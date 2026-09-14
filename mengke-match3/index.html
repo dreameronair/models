@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>奇妙萌可消消乐</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="format-detection" content="telephone=no,email=no,address=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#ffb3d9">
+<meta name="description" content="奇妙萌可主题三消小游戏，六只魔法萌宠等你来连线，微信里打开就能玩。">
+<!-- 微信/QQ 内置浏览器: 锁定竖屏、全屏、禁止上下文菜单 -->
+<meta name="x5-orientation" content="portrait">
+<meta name="x5-fullscreen" content="true">
+<meta name="x5-page-mode" content="app">
+<meta name="screen-orientation" content="portrait">
+<meta name="full-screen" content="yes">
+<meta name="browsermode" content="application">
+<!-- 分享卡片 -->
+<meta property="og:title" content="奇妙萌可消消乐">
+<meta property="og:description" content="六只魔法萌宠三消闯关，快来挑战三星通关！">
+<meta property="og:image" content="assets/ui/share.png">
+<meta property="og:type" content="website">
+<link rel="apple-touch-icon" href="assets/ui/share.png">
+<link rel="icon" href="assets/ui/share.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 加载中 -->
+  <section class="screen is-active" id="screen-loading">
+    <div class="loading-box">
+      <div class="loading-title">奇妙萌可<em>消消乐</em></div>
+      <div class="loading-bar"><i id="loadingFill"></i></div>
+      <p class="loading-tip" id="loadingTip">正在召唤魔法萌宠…</p>
+    </div>
+  </section>
+
+  <!-- 首页 -->
+  <section class="screen" id="screen-home">
+    <div class="home-top">
+      <h1 class="game-title">奇妙萌可<em>消消乐</em></h1>
+      <p class="game-sub">三只相同萌宠连成一线，就能施展魔法！</p>
+    </div>
+    <div class="home-pets" id="homePets"></div>
+    <div class="home-actions">
+      <button class="btn btn-primary" id="btnPlay">开始游戏</button>
+      <button class="btn" id="btnLevels">选择关卡</button>
+      <button class="btn btn-ghost" id="btnHowTo">玩法说明</button>
+    </div>
+    <div class="home-foot">
+      <p class="home-progress" id="homeProgress"></p>
+      <div class="chips">
+        <button class="chip" id="btnSfx">音效</button>
+        <button class="chip" id="btnBgm">音乐</button>
+        <button class="chip" id="btnShare">分享</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 关卡选择 -->
+  <section class="screen" id="screen-levels">
+    <header class="page-head">
+      <button class="icon-btn" data-nav="home">‹</button>
+      <h2>选择关卡</h2>
+      <span class="icon-btn is-ghost"></span>
+    </header>
+    <div class="level-grid scrollable" id="levelGrid"></div>
+  </section>
+
+  <!-- 游戏 -->
+  <section class="screen" id="screen-game">
+    <div class="hud">
+      <div class="hud-line">
+        <button class="icon-btn" id="btnPause">‖</button>
+        <div class="hud-level">第 <b id="hudLevel">1</b> 关</div>
+        <div class="hud-moves"><i>剩余步数</i><b id="hudMoves">0</b></div>
+      </div>
+      <div class="hud-line">
+        <div class="hud-score"><i>分数</i><b id="hudScore">0</b></div>
+        <div class="star-bar">
+          <div class="star-bar-fill" id="starFill"></div>
+          <span class="star-node" data-index="0">★</span>
+          <span class="star-node" data-index="1">★</span>
+          <span class="star-node" data-index="2">★</span>
+        </div>
+      </div>
+      <div class="goals" id="hudGoals"></div>
+    </div>
+
+    <div class="board-wrap" id="boardWrap">
+      <canvas id="board"></canvas>
+    </div>
+
+    <div class="props">
+      <button class="prop" id="propHammer">
+        <span class="prop-icon">🔨</span><span class="prop-name">魔法锤</span><b class="prop-count" id="countHammer">0</b>
+      </button>
+      <button class="prop" id="propShuffle">
+        <span class="prop-icon">🔄</span><span class="prop-name">重新洗牌</span><b class="prop-count" id="countShuffle">0</b>
+      </button>
+      <button class="prop" id="propHint">
+        <span class="prop-icon">💡</span><span class="prop-name">找一找</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 弹层 -->
+  <div class="overlay" id="overlay">
+    <div class="card" id="overlayCard"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="rotate-hint">请将手机竖屏使用 📱</div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/board.js"></script>
+<script src="js/game.js"></script>
+<script src="js/wechat.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
