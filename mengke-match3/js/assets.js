@@ -18,7 +18,7 @@
 
   var SPRITE_SIZE = 256;
   var REMOTE_TIMEOUT = 9000;
-  var CACHE_PREFIX = 'mengke-skin-v3-';
+  var CACHE_PREFIX = 'mengke-skin-v4-';
   // 有防盗链的图床常把 404 也回一张小占位图, 浏览器会当成加载成功。
   // 角色图都在 320px 以上, 所以小于这个尺寸的一律按失败处理, 免得棋盘上画出破图。
   var MIN_REMOTE_SIZE = 96;

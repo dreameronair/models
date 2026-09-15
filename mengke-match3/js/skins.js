@@ -30,20 +30,21 @@
       label: '官方萌可',
       source: 'remote',
       credit: '角色图片来自 Catch! Teenieping Wiki (Fandom)',
-      // 都挑了脸大、无相框、背景透明的那种, 缩到棋盘格子里才认得出谁是谁
+      // 全部取动画同款的 3D 渲染图(不要 2D 贴纸版, 那种画风跟动画对不上),
+      // 并且只挑正脸、无相框、背景透明的, 缩到棋盘格子里才认得出谁是谁。
       images: {
-        // 爱心萌可 Heartsping (粉)
-        rabbit: WIKI + 'e/ea/Heartsping_S1_2D_Icon_2.png',
+        // 爱心萌可 Heartsping (粉, 第一季造型)
+        rabbit: WIKI + '6/6c/Heartsping_S1_Render_13.png',
         // 正正萌可 Dadaping (蓝, 眼镜与书)
-        cat: WIKI + '5/51/Dadaping_Render_1.png',
+        cat: WIKI + '1/16/Dadaping_Render_4.png',
         // 勇气萌可 Gogoping (黄, 相机)
-        bear: WIKI + 'e/e7/Gogoping_Render_13.png',
+        bear: WIKI + '0/04/Gogoping_Render_1.png',
         // 盼盼萌可 Chachaping (绿, 四叶草)
-        dragon: WIKI + '0/0c/Chachaping_2D_Icon.png',
+        dragon: WIKI + '1/1d/Chachaping_Render_8.png',
         // 唱唱萌可 Lalaping (紫, 音符)
-        unicorn: WIKI + '1/17/Lalaping_2D_Icon.png',
+        unicorn: WIKI + 'a/af/Lalaping_Render_5.png',
         // 娜娜萌可 Nanaping (红)
-        fox: WIKI + 'd/dc/Nanaping_Icon.png'
+        fox: WIKI + '5/5e/Nanaping_Render_4.png'
       }
     }
   };
