@@ -363,24 +363,53 @@ section('关卡配置');
   }
 
   {
-    // 难度用「每步需要消掉多少个目标」衡量。同种类数的关卡之间, 分章看应当
-    // 越往后越紧 —— 5 种和 6 种的速率差快一倍, 混在一起比没有意义。
+    // 难度看「每步得消掉多少个目标棋子」。只比 6 种角色的关卡: 5 种的速率
+    // 差了快一倍, 混在一起没有可比性, 而且每章只有一关, 单样本也说明不了什么。
     let bad = '';
-    for (const types of [5, 6]) {
-      const perChapter = [];
-      for (let c = 0; c < 10; c++) {
-        const part = LEVELS.slice(c * 10, c * 10 + 10).filter((l) => l.types === types);
-        if (!part.length) continue;
-        const avg = part.reduce((s, l) => s + l.collect[0].count / l.moves, 0) / part.length;
-        perChapter.push({ c: c + 1, avg });
-      }
-      for (let k = 1; k < perChapter.length; k++) {
-        if (perChapter[k].avg < perChapter[k - 1].avg - 0.02) {
-          bad = types + ' 种角色: 第 ' + perChapter[k].c + ' 章比上一章松了';
-        }
+    const perChapter = [];
+    for (let c = 0; c < 10; c++) {
+      const part = LEVELS.slice(c * 10, c * 10 + 10).filter((l) => l.types === 6);
+      if (!part.length) continue;
+      const avg = part.reduce(
+        (s, l) => s + l.collect.reduce((n, g) => n + g.count, 0) / l.moves, 0) / part.length;
+      perChapter.push({ c: c + 1, avg });
+    }
+    for (let k = 1; k < perChapter.length; k++) {
+      if (perChapter[k].avg < perChapter[k - 1].avg) {
+        bad = '第 ' + perChapter[k].c + ' 章比上一章松了';
       }
     }
     check('难度逐章递增(每步需消除量不回落)', !bad, bad);
+  }
+
+  {
+    // 上面几项只看配置数字, 数字对不代表打起来对。这里真的让机器玩家去打,
+    // 抽查几关确认: 通关率一路往下但不崩盘。整条曲线跑 npm run balance。
+    // 各章第 3 关: 避开第 1 关(多给两步)和第 5 关(降到 5 种角色)这两种特例
+    const SAMPLES = [13, 33, 53, 73, 93];
+    const RUNS = 30;
+    const rates = SAMPLES.map((n) => {
+      let wins = 0;
+      for (let run = 0; run < RUNS; run++) {
+        const rt = sim.createRuntime(n * 1000 + run);
+        if (sim.playLevel(rt, rt.LEVELS[n - 1],
+          { skill: 0.85, rng: sim.makeRng(n * 7919 + run) }).won) wins++;
+      }
+      return { level: n, rate: wins / RUNS };
+    });
+    const shown = rates.map((r) => '第' + r.level + '关 ' + Math.round(r.rate * 100) + '%').join(', ');
+
+    let slipped = '';
+    for (let k = 1; k < rates.length; k++) {
+      // 留 10 个点的余量, 20 局的抽样本来就有波动
+      if (rates[k].rate > rates[k - 1].rate + 0.10) {
+        slipped = '第 ' + rates[k].level + ' 关反而更好过';
+      }
+    }
+    check('模拟对局: 通关率随关卡推进走低', !slipped, slipped + ' (' + shown + ')');
+    check('模拟对局: 最难的抽样关也打得过',
+      rates.every((r) => r.rate >= 0.5), shown);
+    console.log('    ' + shown);
   }
 
   {

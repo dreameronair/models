@@ -75,6 +75,10 @@
   var YIELD_PER_MOVE = { 5: 2.44, 6: 1.27 };
   var SCORE_PER_MOVE = { 5: 1095, 6: 587 };
 
+  // 要收集的种类越多, 越要等最慢的那一种凑齐, 实际比「每种各算一遍」更难。
+  // 不补这个系数的话, 3 种目标的关卡会比左右邻居低十几个百分点的通关率。
+  var KIND_RELIEF = { 1: 1, 2: 0.97, 3: 0.90 };
+
   function buildLevels() {
     var levels = [];
 
@@ -93,10 +97,10 @@
       var moves = baseMoves + (step === 0 ? 2 : 0);
 
       // pressure: 预计要用掉多少比例的步数, 也就是这一关有多紧
-      var pressure = 0.45 + 0.27 * t;
+      var pressure = 0.45 + 0.31 * t;
       var budget = baseMoves * pressure;
       var kinds = parseInt(COLLECT_KINDS[chapter].charAt(step), 10);
-      var count = Math.round(budget * YIELD_PER_MOVE[types]);
+      var count = Math.round(budget * YIELD_PER_MOVE[types] * KIND_RELIEF[kinds]);
 
       // 目标分按预计得分反推: 打得顺手就是 3 星, 勉强收齐是 2 星
       var target = Math.round(budget * SCORE_PER_MOVE[types] * (0.62 + 0.14 * t) / 100) * 100;
