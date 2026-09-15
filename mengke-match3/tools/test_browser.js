@@ -242,8 +242,12 @@ async function touchSwipe(page) {
   await page.waitForSelector('#screen-levels.is-active');
   const levelCount = await page.locator('.level-card').count();
   const lockedCount = await page.locator('.level-card.is-locked').count();
-  check('关卡列表渲染 10 关', levelCount === 10, '实际 ' + levelCount);
-  check('首次进入只解锁第 1 关', lockedCount === 9, '实际锁住 ' + lockedCount);
+  const chapterCount = await page.locator('.chapter-head').count();
+  check('关卡列表渲染 100 关', levelCount === 100, '实际 ' + levelCount);
+  check('关卡按 10 章分组', chapterCount === 10, '实际 ' + chapterCount);
+  check('首次进入只解锁第 1 关', lockedCount === 99, '实际锁住 ' + lockedCount);
+  check('当前关卡有高亮',
+    await page.locator('.level-card.is-current b').textContent() === '1');
   await shot('03-levels');
 
   /* ---------------------------------------------------------------- */
@@ -256,8 +260,12 @@ async function touchSwipe(page) {
   check('棋盘填满 64 格', snapshot.tiles === 64, '实际 ' + snapshot.tiles);
   check('开局没有现成三连', snapshot.runs === 0, '实际 ' + snapshot.runs);
   check('开局有可行走法', snapshot.hasMove);
-  check('步数按关卡配置初始化', snapshot.moves === 25, '实际 ' + snapshot.moves);
-  check('HUD 步数与内部状态一致', snapshot.hudMoves === '25', '实际 ' + snapshot.hudMoves);
+  // 步数跟着关卡配置走, 别写死数字, 不然每次重新配平都要改测试
+  const firstMoves = await page.evaluate(() => window.MK.LEVELS[0].moves);
+  check('步数按关卡配置初始化', snapshot.moves === firstMoves,
+    '实际 ' + snapshot.moves + ', 配置 ' + firstMoves);
+  check('HUD 步数与内部状态一致', snapshot.hudMoves === String(firstMoves),
+    '实际 ' + snapshot.hudMoves);
 
   const canvasBox = await page.locator('#board').boundingBox();
   check('棋盘为正方形', Math.abs(canvasBox.width - canvasBox.height) < 1.5,
@@ -563,7 +571,7 @@ async function touchSwipe(page) {
   await waitIdle(page);
   const afterRestart = await state(page);
   check('重玩后分数与步数重置',
-    afterRestart.score === 0 && afterRestart.moves === 25,
+    afterRestart.score === 0 && afterRestart.moves === firstMoves,
     'score=' + afterRestart.score + ' moves=' + afterRestart.moves);
 
   /* ---------------------------------------------------------------- */
@@ -597,7 +605,8 @@ async function touchSwipe(page) {
   await page.click('[data-action="next"]');
   await waitIdle(page);
   const nextSnapshot = await state(page);
-  check('可以进入第 2 关', nextSnapshot.level === 1 && nextSnapshot.moves === 24,
+  const secondMoves = await page.evaluate(() => window.MK.LEVELS[1].moves);
+  check('可以进入第 2 关', nextSnapshot.level === 1 && nextSnapshot.moves === secondMoves,
     'level=' + nextSnapshot.level + ' moves=' + nextSnapshot.moves);
   await shot('11-level2');
 

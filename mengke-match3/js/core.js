@@ -30,19 +30,92 @@
     { id: 'fox',     name: '火火',  official: '娜娜萌可', sprite: 'fox',     color: '#ff894a', light: '#ffdcc8', dark: '#d95515' }
   ];
 
-  // types: 本关出现的角色种类数(越少越容易凑对)
-  var LEVELS = [
-    { types: 5, moves: 25, target: 1200, collect: [{ type: 0, count: 10 }] },
-    { types: 5, moves: 24, target: 2000, collect: [{ type: 1, count: 12 }, { type: 2, count: 12 }] },
-    { types: 5, moves: 22, target: 2800, collect: [{ type: 3, count: 14 }] },
-    { types: 6, moves: 22, target: 3500, collect: [{ type: 4, count: 14 }, { type: 5, count: 14 }] },
-    { types: 6, moves: 20, target: 4200, collect: [{ type: 0, count: 16 }, { type: 1, count: 16 }] },
-    { types: 6, moves: 20, target: 5000, collect: [{ type: 2, count: 18 }, { type: 3, count: 18 }] },
-    { types: 6, moves: 18, target: 5800, collect: [{ type: 4, count: 18 }, { type: 5, count: 18 }, { type: 0, count: 18 }] },
-    { types: 6, moves: 18, target: 6600, collect: [{ type: 1, count: 20 }, { type: 2, count: 20 }] },
-    { types: 6, moves: 16, target: 7500, collect: [{ type: 3, count: 20 }, { type: 4, count: 20 }, { type: 5, count: 20 }] },
-    { types: 6, moves: 16, target: 8800, collect: [{ type: 0, count: 14 }, { type: 2, count: 14 }, { type: 4, count: 14 }] }
+  /* ---------------- 关卡 ---------------- *
+   *
+   * 100 关分 10 章, 每章 10 关。关卡不是手写死的, 而是按下面几条曲线算出来:
+   *
+   *   types  本关出现几种角色。种类越少越容易凑三连。
+   *   moves  可用步数, 随进度从 27 收到 18。
+   *   collect 收集目标, 通关条件就是把它们全收齐(目标分只决定几颗星)。
+   *   target 目标分, 达标 2 星, 1.5 倍 3 星。
+   *
+   * 数值是拿 tools/balance.js 跑机器对局配出来的, 改动后请重新跑一遍,
+   * 确认通关率仍然是「从接近 100% 平缓下滑」而不是某关突然掉下去。
+   */
+  var LEVEL_COUNT = 100;
+  var CHAPTER_SIZE = 10;
+
+  // 每 10 关一章, 关卡选择页按章分组, 给小孩一个「又翻过一页」的盼头
+  var CHAPTER_NAMES = [
+    '初识萌可', '魔法森林', '星光草原', '云朵小镇', '彩虹湖畔',
+    '糖果乐园', '月光城堡', '梦境花园', '极光雪原', '萌可王国'
   ];
+
+  // 每章 10 关各自要收集几种角色, 写成图案方便一眼看出节奏。
+  // 同章里穿插 1/2/3 种, 相邻关卡的感觉才不会雷同。
+  var COLLECT_KINDS = [
+    '1111211121',
+    '1112112121',
+    '1121221221',
+    '2122122122',
+    '2212232122',
+    '2223222322',
+    '2232232323',
+    '3223232332',
+    '3232333233',
+    '3233233333'
+  ];
+
+  // 一步平均能消掉某个指定角色几个、能拿多少分。这两张表是
+  // `node tools/balance.js --calibrate` 实测出来的, 不要凭感觉改。
+  //
+  // 角色种类少一个, 连锁会猛很多: 5 种时的速率是 6 种的近两倍,
+  // 所以「喘息关」用 5 种, 但它的收集量和目标分都得按自己这档算,
+  // 否则会变成白送的一关。(4 种更夸张, 一步能消 7 个多, 已经弃用。)
+  var YIELD_PER_MOVE = { 5: 2.44, 6: 1.27 };
+  var SCORE_PER_MOVE = { 5: 1095, 6: 587 };
+
+  function buildLevels() {
+    var levels = [];
+
+    for (var i = 0; i < LEVEL_COUNT; i++) {
+      var chapter = Math.floor(i / CHAPTER_SIZE);
+      var step = i % CHAPTER_SIZE;
+      var t = i / (LEVEL_COUNT - 1);          // 0~1 的总进度
+
+      // 第一章全用 5 种当上手期; 之后每章第 5 关回落一档, 当作喘口气的关卡
+      var types = (i < CHAPTER_SIZE || step === 4) ? 5 : 6;
+
+      // 步数整体递减, 每章第一关多给两步, 让新章节开头不至于一上来就紧。
+      // 注意收集量要按 baseMoves 算 —— 拿 moves 算的话, 多给的两步会同时
+      // 把目标抬高, 白送的两步就没了, 开场关反而成了全章最难的。
+      var baseMoves = Math.round(27 - 9 * t);
+      var moves = baseMoves + (step === 0 ? 2 : 0);
+
+      // pressure: 预计要用掉多少比例的步数, 也就是这一关有多紧
+      var pressure = 0.45 + 0.27 * t;
+      var budget = baseMoves * pressure;
+      var kinds = parseInt(COLLECT_KINDS[chapter].charAt(step), 10);
+      var count = Math.round(budget * YIELD_PER_MOVE[types]);
+
+      // 目标分按预计得分反推: 打得顺手就是 3 星, 勉强收齐是 2 星
+      var target = Math.round(budget * SCORE_PER_MOVE[types] * (0.62 + 0.14 * t) / 100) * 100;
+
+      // 起始角色按关卡号轮换, 免得整章都在收集同一只;
+      // 同关的几个目标取连续下标, 保证互不重复
+      var base = (i * 2 + chapter) % types;
+      var collect = [];
+      for (var k = 0; k < kinds; k++) {
+        collect.push({ type: (base + k) % types, count: count });
+      }
+
+      levels.push({ types: types, moves: moves, target: target, collect: collect });
+    }
+
+    return levels;
+  }
+
+  var LEVELS = buildLevels();
 
   var SPECIAL_LABEL = {
     row: '横向闪电',
@@ -202,6 +275,8 @@
     CONFIG: CONFIG,
     CHARACTERS: CHARACTERS,
     LEVELS: LEVELS,
+    CHAPTER_SIZE: CHAPTER_SIZE,
+    CHAPTER_NAMES: CHAPTER_NAMES,
     SPECIAL_LABEL: SPECIAL_LABEL,
     Ease: Ease,
     Anim: Anim,

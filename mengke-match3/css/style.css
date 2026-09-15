@@ -290,6 +290,31 @@ body {
   padding-bottom: 10px;
 }
 
+.chapter-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 4px 2px;
+}
+
+.chapter-head:first-child { padding-top: 0; }
+
+.chapter-head b {
+  font-size: 15px;
+  font-weight: 900;
+  color: #b83f86;
+}
+
+.chapter-head span {
+  font-size: 12px;
+  color: #ffc32e;
+  font-weight: 700;
+}
+
+.chapter-head.is-locked b { color: #b48ea9; }
+.chapter-head.is-locked span { color: #cdb6c7; }
+
 .level-card {
   position: relative;
   border: 0;
@@ -327,6 +352,12 @@ body {
 .level-card .stars i {
   font-style: normal;
   color: #ffc32e;
+}
+
+/* 当前该打的那一关, 打开关卡页时会自动滚到这里 */
+.level-card.is-current {
+  background: linear-gradient(180deg, #fff6fb, #ffd3ea);
+  box-shadow: 0 4px 0 rgba(200, 130, 180, 0.45), 0 0 0 3px #ff74b3;
 }
 
 .level-card.is-locked {

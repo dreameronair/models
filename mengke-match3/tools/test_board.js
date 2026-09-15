@@ -4,24 +4,9 @@
  */
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const vm = require('vm');
+const sim = require('./sim');
 
-const root = path.join(__dirname, '..');
-const sandbox = {};
-sandbox.window = sandbox;
-sandbox.console = console;
-sandbox.Math = Math;
-sandbox.localStorage = null;
-sandbox.document = { addEventListener() {} };
-
-const context = vm.createContext(sandbox);
-for (const file of ['js/core.js', 'js/board.js']) {
-  vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
-}
-
-const MK = sandbox.MK;
+const MK = sim.createRuntime();
 const { Board, Tile, CONFIG, LEVELS } = MK;
 
 let passed = 0;
@@ -279,86 +264,9 @@ section('走法判定');
 /* ------------------------------------------------------------------ */
 section('完整对局模拟(复用 Game 的消除流程逻辑)');
 {
-  function pickCreationCell(group, lastSwap) {
-    if (lastSwap) {
-      for (const cell of group.cells) {
-        if ((cell.r === lastSwap.a.r && cell.c === lastSwap.a.c) ||
-            (cell.r === lastSwap.b.r && cell.c === lastSwap.b.c)) return cell;
-      }
-    }
-    const hRuns = group.runs.filter((r) => r.dir === 'h');
-    const vRuns = group.runs.filter((r) => r.dir === 'v');
-    for (const h of hRuns) {
-      for (const v of vRuns) {
-        if (h.r >= v.r && h.r < v.r + v.len && v.c >= h.c && v.c < h.c + h.len) {
-          return { r: h.r, c: v.c };
-        }
-      }
-    }
-    const longest = group.runs.reduce((a, b) => (b.len > a.len ? b : a));
-    const mid = Math.floor(longest.len / 2);
-    return longest.dir === 'h'
-      ? { r: longest.r, c: longest.c + mid }
-      : { r: longest.r + mid, c: longest.c };
-  }
-
-  function resolve(board, trigger, lastSwap, stats) {
-    let pending = trigger || { seeds: [], partnerType: null, extra: [] };
-    let cascade = 0;
-
-    for (;;) {
-      if (++cascade > 400) throw new Error('消除流程没有收敛');
-      const groups = board.findMatches();
-      if (!groups.length && !pending.seeds.length && !pending.extra.length) break;
-
-      const reserved = new Set();
-      const creations = [];
-      const seeds = [];
-
-      for (const group of groups) {
-        seeds.push(...group.cells);
-        if (group.special) {
-          const pos = pickCreationCell(group, lastSwap);
-          reserved.add(pos.r + ',' + pos.c);
-          creations.push({ ...pos, special: group.special, type: group.type });
-        }
-      }
-      seeds.push(...pending.seeds, ...pending.extra);
-      const partnerType = pending.partnerType;
-      pending = { seeds: [], partnerType: null, extra: [] };
-
-      const res = board.expandClears(seeds, partnerType);
-      const cleared = res.cleared.filter((x) => !reserved.has(x.r + ',' + x.c));
-      if (!cleared.length && !creations.length) break;
-
-      stats.cleared += cleared.length;
-      stats.specialsMade += creations.length;
-      stats.specialsFired += res.effects.length;
-
-      for (const c of cleared) board.remove(c.r, c.c);
-      for (const creation of creations) {
-        const tile = board.get(creation.r, creation.c);
-        if (tile) {
-          tile.special = creation.special;
-          tile.type = creation.type;
-        }
-      }
-      board.collapse();
-      lastSwap = null;
-    }
-    return cascade;
-  }
-
-  function buildTrigger(board, a, b) {
-    const ta = board.get(a.r, a.c);
-    const tb = board.get(b.r, b.c);
-    const trigger = { seeds: [], partnerType: null, extra: [] };
-    if (ta.special) trigger.seeds.push({ r: a.r, c: a.c });
-    if (tb.special) trigger.seeds.push({ r: b.r, c: b.c });
-    if (ta.special === 'rainbow' && !tb.special) trigger.partnerType = tb.type;
-    if (tb.special === 'rainbow' && !ta.special) trigger.partnerType = ta.type;
-    return trigger;
-  }
+  // 消除流程与机器玩家都放在 tools/sim.js, tools/balance.js 配平时用的是
+  // 同一份代码, 免得测试和配平各跑各的、结论对不上
+  const { resolve, buildTrigger } = sim;
 
   let invariantBroken = null;
   const stats = { cleared: 0, specialsMade: 0, specialsFired: 0, shuffles: 0, moves: 0 };
@@ -380,7 +288,11 @@ section('完整对局模拟(复用 Game 的消除流程逻辑)');
       board.swapTiles(move.a, move.b);
       stats.moves++;
       const trigger = buildTrigger(board, move.a, move.b);
-      resolve(board, trigger, { a: move.a, b: move.b }, stats);
+      resolve(board, trigger, { a: move.a, b: move.b }, (step) => {
+        stats.cleared += step.cleared.length;
+        stats.specialsMade += step.creations.length;
+        stats.specialsFired += step.effects.length;
+      });
 
       if (countTiles(board) !== CONFIG.rows * CONFIG.cols) {
         invariantBroken = '消除结束后棋盘有空格: ' + countTiles(board);
@@ -430,6 +342,60 @@ section('关卡配置');
     });
   });
   check('所有关卡配置自洽(收集目标都在本关角色池内且可达)', ok, detail);
+
+  check('一共 100 关', LEVELS.length === 100, '实际 ' + LEVELS.length + ' 关');
+
+  {
+    let bad = '';
+    LEVELS.forEach((level, i) => {
+      const types = level.collect.map((g) => g.type);
+      if (new Set(types).size !== types.length) bad = '第 ' + (i + 1) + ' 关';
+    });
+    check('同一关的收集目标不会重复同一个角色', !bad, bad);
+  }
+
+  {
+    // 六个角色都得在某些关里当过目标, 否则有人从头到尾只是背景板
+    const seen = new Set();
+    LEVELS.forEach((level) => level.collect.forEach((g) => seen.add(g.type)));
+    check('六个角色都当过收集目标', seen.size === MK.CHARACTERS.length,
+      '只用到 ' + seen.size + ' 个');
+  }
+
+  {
+    // 难度用「每步需要消掉多少个目标」衡量。同种类数的关卡之间, 分章看应当
+    // 越往后越紧 —— 5 种和 6 种的速率差快一倍, 混在一起比没有意义。
+    let bad = '';
+    for (const types of [5, 6]) {
+      const perChapter = [];
+      for (let c = 0; c < 10; c++) {
+        const part = LEVELS.slice(c * 10, c * 10 + 10).filter((l) => l.types === types);
+        if (!part.length) continue;
+        const avg = part.reduce((s, l) => s + l.collect[0].count / l.moves, 0) / part.length;
+        perChapter.push({ c: c + 1, avg });
+      }
+      for (let k = 1; k < perChapter.length; k++) {
+        if (perChapter[k].avg < perChapter[k - 1].avg - 0.02) {
+          bad = types + ' 种角色: 第 ' + perChapter[k].c + ' 章比上一章松了';
+        }
+      }
+    }
+    check('难度逐章递增(每步需消除量不回落)', !bad, bad);
+  }
+
+  {
+    // 每章第一关多给两步当缓冲, 收集量不该跟着水涨船高
+    let bad = '';
+    for (let c = 1; c < 10; c++) {
+      const opener = LEVELS[c * 10];
+      const next = LEVELS[c * 10 + 1];
+      if (opener.types !== next.types) continue;
+      if (opener.collect[0].count / opener.moves >= next.collect[0].count / next.moves) {
+        bad = '第 ' + (c * 10 + 1) + ' 关并不比下一关松';
+      }
+    }
+    check('每章开场关确实更宽松', !bad, bad);
+  }
 }
 
 console.log('\n' + (failed ? '✗ ' : '✓ ') + passed + ' 项通过, ' + failed + ' 项失败');

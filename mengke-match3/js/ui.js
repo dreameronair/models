@@ -238,23 +238,45 @@
   UI.renderLevels = function () {
     var unlocked = Storage.get('unlocked', 0);
     var progress = Storage.get('progress', {});
+    var size = MK.CHAPTER_SIZE;
     var html = '';
 
     for (var i = 0; i < LEVELS.length; i++) {
+      if (i % size === 0) {
+        var chapter = i / size;
+        // 本章已拿到的星星, 让小孩知道哪一章还有的捡
+        var got = 0;
+        for (var n = i; n < i + size && n < LEVELS.length; n++) {
+          got += (progress[n] || { stars: 0 }).stars;
+        }
+        html += '<div class="chapter-head' + (i > unlocked ? ' is-locked' : '') + '">' +
+          '<b>第 ' + (chapter + 1) + ' 章 · ' + MK.CHAPTER_NAMES[chapter] + '</b>' +
+          '<span>★ ' + got + '/' + size * 3 + '</span></div>';
+      }
+
       var locked = i > unlocked;
       var record = progress[i] || { stars: 0, best: 0 };
       var stars = '';
       for (var s = 0; s < 3; s++) {
         stars += s < record.stars ? '<i>★</i>' : '★';
       }
-      html += '<button class="level-card' + (locked ? ' is-locked' : '') + '"' +
+      html += '<button class="level-card' + (locked ? ' is-locked' : '') +
+        (i === unlocked ? ' is-current' : '') + '"' +
         (locked ? ' disabled' : ' data-level="' + i + '"') + '>' +
         '<b>' + (locked ? '🔒' : i + 1) + '</b>' +
         '<small>' + (locked ? '未解锁' : LEVELS[i].moves + ' 步') + '</small>' +
         '<div class="stars">' + stars + '</div>' +
         '</button>';
     }
-    el('levelGrid').innerHTML = html;
+
+    var grid = el('levelGrid');
+    grid.innerHTML = html;
+
+    // 100 关滚起来很长, 打开时直接停在该打的那一关上
+    var current = grid.querySelector('.level-card.is-current');
+    if (current) {
+      grid.scrollTop = Math.max(0, current.offsetTop - grid.clientHeight / 2);
+    }
   };
 
   /* ---------------- 游戏内 HUD ---------------- */
