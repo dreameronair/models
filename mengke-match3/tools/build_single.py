@@ -105,7 +105,20 @@ def main():
     total_raw += len(icon_raw)
 
     # 2. <link rel=stylesheet> -> <style>
+    #    CSS 里的 url(../assets/...) 也得换成 dataURL: 单文件版是拿来到处发的,
+    #    留着相对路径的话, 文件一旦离开仓库目录, 背景图就 404 了。
     css = read('css', 'style.css')
+
+    def inline_css_url(m):
+        rel = m.group('path')
+        if rel not in inline:
+            raise SystemExit('style.css 引用了没内联的素材: ' + rel)
+        return 'url("%s")' % inline[rel]
+
+    css = re.sub(r'url\(\s*["\']?\.\./(?P<path>[^)"\']+)["\']?\s*\)', inline_css_url, css)
+    if re.search(r'url\(\s*["\']?\.', css):
+        raise SystemExit('style.css 里还有没内联干净的相对路径')
+
     html = re.sub(r'\n?[ \t]*<link rel="stylesheet" href="css/style\.css">',
                   '\n<style>\n' + css + '\n</style>', html, count=1)
     if '<style>' not in html:
@@ -114,6 +127,13 @@ def main():
     # 3. 图标与分享图指向内联数据; 单文件版没有可被抓取的图片地址, og:image 留着也没用
     html = html.replace('<meta property="og:image" content="assets/ui/share.png">\n', '')
     html = html.replace('href="assets/ui/share.png"', 'href="' + icon_url + '"')
+
+    # 趁脚本还没内联(内联后会混进 JS 里拼接 src 的字符串), 先确认页面上没有
+    # 漏掉的外部引用 —— 单文件版发出去就没有同级目录可以兜底了
+    leftover = sorted(set(re.findall(
+        r'(?:src|href)="(?!data:|https?:|#|js/)([^"]+)"', html)))
+    if leftover:
+        raise SystemExit('产物还引用了外部文件, 发出去就会 404: ' + ', '.join(leftover))
 
     # 4. <script src> 按原顺序 -> 内联, 并在最前面插入图片映射表
     scripts = re.findall(r'<script src="(js/[^"]+)"></script>', html)

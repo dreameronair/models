@@ -7,6 +7,7 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
@@ -803,6 +804,13 @@ async function runSingleFileTests(browser) {
     !/<script src=|<link rel="stylesheet"/.test(html));
   check('图片已内联成 dataURL',
     (html.match(/data:image\/(png|jpeg);base64,/g) || []).length >= 8);
+  check('css 里的背景图也内联了', !/url\(\s*["']?\.\./.test(html));
+
+  // 单文件版是拿来单独发给别人的, 必须挪到空目录里测:
+  // 留在 dist/ 下的话, ../assets/ 刚好还在, 相对路径漏网也测不出来
+  const solo = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'mk-solo-')),
+    'mengke-match3.html');
+  fs.copyFileSync(out, solo);
 
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -818,7 +826,7 @@ async function runSingleFileTests(browser) {
     if (!req.url().includes('wikia')) errors.push('请求失败 ' + req.url().slice(0, 60));
   });
 
-  await page.goto('file://' + out, { waitUntil: 'load', timeout: 60000 });
+  await page.goto('file://' + solo, { waitUntil: 'load', timeout: 60000 });
   await page.waitForSelector('#screen-home.is-active', { timeout: 45000 });
   await page.waitForFunction(() => window.__MK_GAME, { timeout: 45000 });
 
