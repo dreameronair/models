@@ -142,7 +142,9 @@
       }));
     }
 
-    this.traffic = this.spawnTraffic(options.trafficDensity || 0.4);
+    // 不能写 `|| 0.4`: 密度 0 是假值, 会被默认值顶掉, 想关车流反而关不掉
+    this.traffic = this.spawnTraffic(
+      options.trafficDensity === undefined ? 0.4 : options.trafficDensity);
     this.pickups = this.spawnPickups();
     this.updateRanks();
   }
@@ -150,6 +152,9 @@
   /** 交通车辆。沿路撒一批, 匀速往前开, 撞上就是一跤。 */
   Race.prototype.spawnTraffic = function (density) {
     var cars = [];
+    // 密度 0 就是真的一辆车都没有。以前这里只是把车距拉到最大, 结果
+    // 想关掉车流的调用方(比如物理测试)照样会撞车。
+    if (!(density > 0)) return cars;
     var total = this.track.totalLength();
     // 极速下一秒要跑一万多个单位, 车距太小就成了「必撞」而不是「要躲」。
     // 最密的城区也留出约半秒反应时间。

@@ -28,9 +28,10 @@
     offRoadLimit: 4200,      // 草地上的极速
     // 离心力与转向力必须是可比的: 转向每帧给 dx, 离心力给 dx*pct*curve*centrifugal,
     // 两者之比就是 pct*curve*centrifugal。配上下面的 maxCurve(6.5), 满速过最急的
-    // 弯时比值约等于 1 —— 方向打满刚好压得住, 松一点油门就轻松, 这才叫「难」。
+    // 弯时比值是 0.975 —— 方向打满刚好压得住(留了点余量), 松一点油门就轻松,
+    // 这才叫「难」。比值一旦过 1, 长弯里再怎么打方向都会被慢慢推出赛道。
     // 之前 centrifugal 是 0.32, 比值 2.6, 等于无论如何都会被甩出赛道。
-    centrifugal: 0.16,       // 过弯被甩出去的力度
+    centrifugal: 0.15,       // 过弯被甩出去的力度
     steerSpeed: 2.6,         // 每秒能横移几个路宽
     maxCurve: 6.5,           // 单段弯道的上限, 再急就不讲道理了
 
@@ -84,28 +85,28 @@
       id: 'coast', name: '海岸公路', scene: 'coast',
       seed: 10704, length: 2600, laps: 1,
       curviness: 0.6, hilliness: 0.5, traffic: 0.35,
-      rivalSkill: 0.90, rivalRage: 0.5, reward: 800,
+      rivalSkill: 0.90, rivalRage: 0.5, reward: 1000,
       desc: '路宽弯缓，适合先摸清油门和拳头。'
     },
     {
       id: 'desert', name: '戈壁国道', scene: 'desert',
       seed: 31337, length: 3200, laps: 1,
       curviness: 0.85, hilliness: 1.0, traffic: 0.5,
-      rivalSkill: 0.96, rivalRage: 0.65, reward: 1400,
+      rivalSkill: 0.96, rivalRage: 0.65, reward: 1600,
       desc: '起伏大，冲坡时看不见前面有没有车。'
     },
     {
       id: 'forest', name: '盘山林道', scene: 'forest',
       seed: 52011, length: 3600, laps: 1,
       curviness: 1.35, hilliness: 0.8, traffic: 0.55,
-      rivalSkill: 1.12, rivalRage: 0.75, reward: 2200,
+      rivalSkill: 1.12, rivalRage: 0.75, reward: 2400,
       desc: '连续急弯，甩出去就是一头栽进树里。'
     },
     {
       id: 'city', name: '午夜城区', scene: 'city',
       seed: 74203, length: 4000, laps: 1,
       curviness: 1.0, hilliness: 0.45, traffic: 0.95,
-      rivalSkill: 1.05, rivalRage: 0.85, reward: 3200,
+      rivalSkill: 1.12, rivalRage: 0.85, reward: 3400,
       desc: '车流密得像下饺子，对手还专挑这种地方动手。'
     },
     {
@@ -132,7 +133,7 @@
       desc: '又沉又快，撞人吃亏的是对方。'
     },
     {
-      id: 'blade', name: '刀锋', price: 6200, color: '#d63a52',
+      id: 'blade', name: '刀锋', price: 5800, color: '#d63a52',
       topSpeed: 1.12, accel: 1.18, grip: 1.1, armor: 0.85,
       desc: '快得离谱，但摔一下就够你喝一壶。'
     }
