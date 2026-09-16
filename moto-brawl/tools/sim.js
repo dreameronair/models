@@ -60,16 +60,9 @@ function botInput(race, skill = 0.85, aggression = 0.5) {
   const line = clamp(-seg.curve * 0.11, -0.6, 0.6) * skill;
   let steer = clamp((line - p.x) * 2.2, -1, 1);
 
-  // 躲前面的交通车
-  const total = race.track.totalLength();
-  const wrapped = ((p.z % total) + total) % total;
-  for (const car of race.traffic) {
-    const dz = car.z - wrapped;
-    if (dz > 0 && dz < 3200 && Math.abs(car.x - p.x) < 0.42) {
-      steer += (p.x > car.x ? 1 : -1) * 1.4;
-      break;
-    }
-  }
+  // 躲前面的交通车。视距跟着速度走, 跟 race.js 里 AI 用的是同一套标准
+  const threat = race.nearestCarAhead(p);
+  if (threat) steer += (p.x > threat.x ? 1 : -1) * 1.4;
   if (Math.abs(p.x) > 0.95) steer += (p.x > 0 ? -1 : 1) * 1.6;
   steer = clamp(steer, -1, 1);
 

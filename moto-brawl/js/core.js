@@ -26,8 +26,13 @@
     decel: -1700,            // 松油门自然减速
     offRoadDecel: -3600,
     offRoadLimit: 4200,      // 草地上的极速
-    centrifugal: 0.32,       // 过弯被甩出去的力度
-    steerSpeed: 2.2,         // 每秒能横移几个路宽
+    // 离心力与转向力必须是可比的: 转向每帧给 dx, 离心力给 dx*pct*curve*centrifugal,
+    // 两者之比就是 pct*curve*centrifugal。配上下面的 maxCurve(6.5), 满速过最急的
+    // 弯时比值约等于 1 —— 方向打满刚好压得住, 松一点油门就轻松, 这才叫「难」。
+    // 之前 centrifugal 是 0.32, 比值 2.6, 等于无论如何都会被甩出赛道。
+    centrifugal: 0.16,       // 过弯被甩出去的力度
+    steerSpeed: 2.6,         // 每秒能横移几个路宽
+    maxCurve: 6.5,           // 单段弯道的上限, 再急就不讲道理了
 
     /* ---- 战斗 ---- */
     reach: 520,              // 出手够得着的纵向距离
@@ -66,42 +71,48 @@
 
   /*
    * 五条赛道。seed 决定路形(同一个 seed 永远生成同一条路, 方便复现和测试),
-   * length 是段数, rivals 是对手数, reward 是冠军奖金。
+   * length 是段数, reward 是冠军奖金。
+   *
+   * rivalSkill 是这条赛道的整体节奏, 直接乘在对手极速上。数值不是拍脑袋,
+   * 是照着「这条赛道预期骑哪台车」反推的 —— 前两条用起步车, 中间两条换
+   * 重机车, 最后一条上刀锋, 让对手速度相对当前座驾逐条走高。第三条跳一下
+   * 是因为刚换车, 正好让买车立刻有获得感。跑 npm run balance 复核。
+   * rivalRage 是他们多爱动手。
    */
   var TRACKS = [
     {
       id: 'coast', name: '海岸公路', scene: 'coast',
       seed: 10704, length: 2600, laps: 1,
       curviness: 0.6, hilliness: 0.5, traffic: 0.35,
-      rivalSkill: 0.78, rivalRage: 0.5, reward: 800,
+      rivalSkill: 0.90, rivalRage: 0.5, reward: 800,
       desc: '路宽弯缓，适合先摸清油门和拳头。'
     },
     {
       id: 'desert', name: '戈壁国道', scene: 'desert',
       seed: 31337, length: 3200, laps: 1,
       curviness: 0.85, hilliness: 1.0, traffic: 0.5,
-      rivalSkill: 0.86, rivalRage: 0.65, reward: 1400,
+      rivalSkill: 0.96, rivalRage: 0.65, reward: 1400,
       desc: '起伏大，冲坡时看不见前面有没有车。'
     },
     {
       id: 'forest', name: '盘山林道', scene: 'forest',
       seed: 52011, length: 3600, laps: 1,
       curviness: 1.35, hilliness: 0.8, traffic: 0.55,
-      rivalSkill: 0.92, rivalRage: 0.75, reward: 2200,
+      rivalSkill: 1.12, rivalRage: 0.75, reward: 2200,
       desc: '连续急弯，甩出去就是一头栽进树里。'
     },
     {
       id: 'city', name: '午夜城区', scene: 'city',
       seed: 74203, length: 4000, laps: 1,
       curviness: 1.0, hilliness: 0.45, traffic: 0.95,
-      rivalSkill: 0.96, rivalRage: 0.85, reward: 3200,
+      rivalSkill: 1.05, rivalRage: 0.85, reward: 3200,
       desc: '车流密得像下饺子，对手还专挑这种地方动手。'
     },
     {
       id: 'storm', name: '暴雨山口', scene: 'storm',
       seed: 90617, length: 4600, laps: 1,
       curviness: 1.5, hilliness: 1.2, traffic: 0.7,
-      rivalSkill: 1.0, rivalRage: 1.0, reward: 5000,
+      rivalSkill: 1.52, rivalRage: 1.0, reward: 5000,
       desc: '又湿又滑又黑，最后一条路，谁都不让谁。'
     }
   ];

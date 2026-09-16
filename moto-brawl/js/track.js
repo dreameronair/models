@@ -116,6 +116,10 @@
         curve = rng.pick([CURVE.easy, CURVE.medium]) * curviness;
         if (rng.chance(0.5)) curve = -curve;
       }
+      // 夹住弯道上限。curviness 大于 1 的赛道原本会造出转向根本压不住的弯,
+      // 那不是难度, 是必然被甩出赛道。夹完之后 curviness 的作用变成
+      // 「急弯更密」而不是「急弯更离谱」。
+      curve = Util.clamp(curve, -CONFIG.maxCurve, CONFIG.maxCurve);
 
       if (rng.chance(0.55)) {
         hill = rng.pick([HILL.low, HILL.medium, HILL.high]) * hilliness;

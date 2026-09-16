@@ -44,6 +44,8 @@
     this.attackCd = 0;
     this.attack = null;            // { side, kind, t } 出手动画
     this.flash = 0;                // 挨打时的闪白
+    this.grazeCd = 0;              // 蹭车的冷却, 免得贴着一辆车连扣好几次
+    this.swingCd = 0;              // AI 两次寻衅之间的间隔
 
     this.finished = false;
     this.finishTime = 0;
@@ -124,10 +126,13 @@
     var defs = options.riders || [];
     for (var i = 0; i < defs.length; i++) {
       var d = defs[i];
+      // 对手极速 = 车手底子 x 本赛道的整体节奏。
+      // 节奏值(track.rivalSkill)是照着三台车的极速定的: 第一条赛道略低于
+      // 起步车, 最后一条要骑上最快的车才追得上 —— 换车才有意义。
       // 对手起步位置错开, 免得开局就叠在一起
       this.riders.push(new Rider({
         id: 'ai' + i, name: d.name, color: d.color,
-        topSpeed: 0.9 + d.skill * 0.22 * (options.rivalSkill || 1),
+        topSpeed: (0.74 + d.skill * 0.20) * (options.rivalSkill || 1),
         accel: 0.9 + d.skill * 0.2,
         grip: 1, armor: d.bulk,
         skill: d.skill * (options.rivalSkill || 1),
@@ -146,7 +151,9 @@
   Race.prototype.spawnTraffic = function (density) {
     var cars = [];
     var total = this.track.totalLength();
-    var gap = Util.interpolate(9000, 2600, Util.clamp(density, 0, 1));
+    // 极速下一秒要跑一万多个单位, 车距太小就成了「必撞」而不是「要躲」。
+    // 最密的城区也留出约半秒反应时间。
+    var gap = Util.interpolate(16000, 6000, Util.clamp(density, 0, 1));
     for (var z = 4000; z < total - 4000; z += gap * this.rng.range(0.6, 1.5)) {
       cars.push({
         z: z,
@@ -271,6 +278,8 @@
     rider.lean += (wantLean - rider.lean) * Math.min(1, dt * 8);
 
     if (rider.flash > 0) rider.flash -= dt;
+    if (rider.grazeCd > 0) rider.grazeCd -= dt;
+    if (rider.swingCd > 0) rider.swingCd -= dt;
     if (rider.attackCd > 0) rider.attackCd -= dt;
     if (rider.attack) {
       rider.attack.t += dt;
@@ -401,28 +410,46 @@
 
     this.driveRider(ai, dt, !brake, brake, steer);
 
-    // 找人打: 旁边有人 + 性子急 + 冷却好了
-    if (ai.attackCd <= 0 && this.rng.next() < ai.aggression * dt * 1.7) {
-      var side = this.rng.chance(0.5) ? -1 : 1;
+    // 找人打。出手频率不能高: 五个对手同时够得着玩家时, 单个看着还算克制的
+    // 频率乘以五就成了围殴, 玩家全程在地上爬。
+    if (ai.attackCd <= 0 && ai.swingCd <= 0 &&
+        this.rng.next() < ai.aggression * dt * 0.55) {
+      var side = this.player.x > ai.x ? 1 : -1;
+      // 优先打玩家 —— AI 互殴的话玩家就成看客了; 够不着再随便找一个
       var victim = this.findTarget(ai, side);
-      // 优先打玩家, 不然 AI 互殴玩家就成看客了
-      var atPlayer = this.findTarget(ai, this.player.x > ai.x ? 1 : -1);
-      if (atPlayer === this.player) {
-        this.tryAttack(ai, this.player.x > ai.x ? 1 : -1,
-          this.rng.chance(0.35) ? 'kick' : 'punch');
-      } else if (victim) {
+      if (victim !== this.player) {
+        side = this.rng.chance(0.5) ? -1 : 1;
+        victim = this.findTarget(ai, side);
+      }
+      if (victim) {
         this.tryAttack(ai, side, this.rng.chance(0.3) ? 'kick' : 'punch');
+        // 打完歇一会儿再找下一个目标, 给玩家反打和拉开距离的机会
+        ai.swingCd = this.rng.range(1.1, 2.4);
       }
     }
   };
 
+  /**
+   * 前方同一条线上最近的一辆车。
+   * 视距按当前速度算成「大约一秒后会撞上的距离」—— 写死一个固定值的话,
+   * 极速下 3000 个单位只有 0.3 秒反应时间, 等看见了已经撞上了。
+   */
   Race.prototype.nearestCarAhead = function (rider) {
+    var total = this.track.totalLength();
+    var wrapped = ((rider.z % total) + total) % total;
+    var lookAhead = Math.max(3000, rider.speed * 1.15);
+    var best = null;
+    var bestDz = Infinity;
+
     for (var i = 0; i < this.traffic.length; i++) {
       var car = this.traffic[i];
-      var dz = car.z - (rider.z % this.track.totalLength());
-      if (dz > 0 && dz < 3000 && Math.abs(car.x - rider.x) < 0.45) return car;
+      var dz = car.z - wrapped;
+      if (dz < -total / 2) dz += total;       // 对面刚绕回起点的车
+      if (dz <= 0 || dz > lookAhead) continue;
+      if (Math.abs(car.x - rider.x) > 0.42) continue;
+      if (dz < bestDz) { bestDz = dz; best = car; }
     }
-    return null;
+    return best;
   };
 
   /* ---------------- 碰撞 ---------------- */
@@ -430,15 +457,29 @@
   Race.prototype.resolveCollisions = function (rider, dt) {
     if (rider.isDown() || rider.finished) return;
 
-    // 撞交通车: 直接摔
+    // 撞交通车。正面撞上才摔车; 蹭一下只掉速掉血 ——
+    // 一碰就躺的话, 车流密的赛道基本没法玩。
     var wrapped = ((rider.z % this.track.totalLength()) + this.track.totalLength())
       % this.track.totalLength();
     for (var i = 0; i < this.traffic.length; i++) {
       var car = this.traffic[i];
-      if (Math.abs(car.z - wrapped) > 320) continue;
-      if (Math.abs(car.x - rider.x) > 0.3) continue;
-      rider.knockDown();
-      this.events.push({ type: 'crash', rider: rider, cause: 'traffic' });
+      if (Math.abs(car.z - wrapped) > 300) continue;
+      var gap = Math.abs(car.x - rider.x);
+      if (gap > 0.3) continue;
+
+      if (gap < 0.15) {
+        rider.knockDown();
+        this.events.push({ type: 'crash', rider: rider, cause: 'traffic' });
+      } else {
+        // 擦身而过: 弹开、掉速、掉点血, 但还骑在车上
+        if (rider.grazeCd > 0) continue;
+        rider.grazeCd = 0.6;
+        rider.x += (rider.x > car.x ? 1 : -1) * 0.22;
+        rider.speed *= 0.62;
+        rider.health = Math.max(1, rider.health - 6);
+        rider.flash = 0.18;
+        this.events.push({ type: 'graze', rider: rider });
+      }
       return;
     }
 
