@@ -1,0 +1,424 @@
+/* 《铁骑狂飙》样式。横屏优先，同时兼顾竖屏和刘海屏安全区。 */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #11141b;
+  color: #e9edf5;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  /* 禁掉长按菜单和双击缩放，游戏里全是快速点按 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.screen.is-active { display: flex; }
+
+/* ---------- 通用控件 ---------- */
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #e9edf5;
+  background: linear-gradient(180deg, #2c3240, #232833);
+  box-shadow: 0 3px 0 #171b24;
+  cursor: pointer;
+}
+
+.btn:active { transform: translateY(2px); box-shadow: none; }
+
+.btn-primary {
+  background: linear-gradient(180deg, #e8663a, #cf4a26);
+  box-shadow: 0 3px 0 #8f3016;
+  color: #fff;
+}
+
+.btn-ghost { background: rgba(255, 255, 255, 0.08); box-shadow: none; }
+
+.btn[disabled] { opacity: 0.45; }
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e9edf5;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chips { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+
+.chip {
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  color: #cfd6e2;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.chip.is-off { color: #7b8496; text-decoration: line-through; }
+
+.scrollable { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+
+/* ---------- 加载 / 主菜单 ---------- */
+
+.logo {
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  text-align: center;
+  color: #f2f5fa;
+  text-shadow: 0 3px 0 #b8371a, 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.logo span { color: #f2a33c; }
+
+.loading-box, .home-inner {
+  margin: auto;
+  width: min(420px, 82vw);
+  text-align: center;
+}
+
+.bar {
+  height: 8px;
+  margin: 22px 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.bar i { display: block; height: 100%; width: 0; background: #f2a33c; transition: width 0.2s; }
+
+.tip { font-size: 13px; color: #97a1b3; }
+
+.slogan { margin: 8px 0 22px; font-size: 14px; color: #9aa4b6; letter-spacing: 3px; }
+
+.menu { margin-bottom: 14px; }
+
+.wallet { font-size: 13px; color: #97a1b3; }
+.wallet b { color: #f2a33c; }
+
+/* ---------- 列表页 ---------- */
+
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.page-head h2 { flex: 1; font-size: 18px; letter-spacing: 3px; }
+
+.head-cash { font-size: 13px; color: #97a1b3; }
+.head-cash b { color: #f2a33c; }
+
+.track-list, .bike-list { flex: 1; min-height: 0; padding: 0 14px 18px; }
+
+.card {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  text-align: left;
+  color: #e9edf5;
+  background: linear-gradient(180deg, #262c38, #1e232d);
+  box-shadow: 0 3px 0 #161a22;
+  cursor: pointer;
+}
+
+.card:active { transform: translateY(2px); box-shadow: none; }
+
+.card.is-locked { opacity: 0.5; cursor: default; }
+.card.is-owned { outline: 2px solid #f2a33c; }
+
+.card-thumb {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 46px;
+  border-radius: 8px;
+  background: #11141b;
+}
+
+.card-body { flex: 1; min-width: 0; }
+.card-title { font-size: 16px; font-weight: 700; }
+.card-desc { margin-top: 3px; font-size: 12px; color: #97a1b3; line-height: 1.45; }
+.card-meta { margin-top: 5px; font-size: 12px; color: #7f8a9c; }
+.card-meta b { color: #f2a33c; }
+
+.card-badge {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f2a33c;
+  text-align: right;
+}
+
+.stat-row { display: flex; gap: 10px; margin-top: 6px; }
+.stat { flex: 1; font-size: 11px; color: #7f8a9c; }
+.stat i { display: block; height: 4px; margin-top: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); }
+.stat i b { display: block; height: 100%; border-radius: 2px; background: #4fa3e0; }
+
+/* ---------- 比赛 ---------- */
+
+#screen-race { padding: 0; }
+
+#view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 0;
+  pointer-events: none;
+}
+
+.hud-left, .hud-right { display: flex; align-items: center; gap: 10px; }
+.hud-right { margin-left: auto; }
+.hud-mid { flex: 1; max-width: 46%; }
+
+.hud-rank {
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: rgba(10, 13, 19, 0.6);
+  font-weight: 900;
+}
+.hud-rank b { font-size: 24px; color: #f2a33c; }
+.hud-rank small { font-size: 12px; color: #97a1b3; }
+
+.hud-time, .hud-speed {
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(10, 13, 19, 0.6);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.hud-speed b { font-size: 22px; }
+.hud-speed small { margin-left: 3px; font-size: 11px; color: #97a1b3; }
+
+.progress, .health {
+  height: 7px;
+  margin-bottom: 5px;
+  border-radius: 999px;
+  background: rgba(10, 13, 19, 0.6);
+  overflow: hidden;
+}
+.progress i { display: block; height: 100%; width: 0; background: #4fa3e0; }
+.health i { display: block; height: 100%; width: 100%; background: #5cd16b; transition: width 0.15s; }
+.health i.is-low { background: #e8c53a; }
+.health i.is-crit { background: #e8503a; }
+
+/* [hidden] 默认的 display:none 会被下面的 display 覆盖掉，得显式压回去 */
+.weapon[hidden] { display: none; }
+
+.weapon {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(242, 163, 60, 0.9);
+  color: #221a0c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hud .icon-btn { pointer-events: auto; background: rgba(10, 13, 19, 0.6); }
+
+.center-msg {
+  position: absolute;
+  top: 38%;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: #fff;
+  text-shadow: 0 4px 0 #b8371a, 0 8px 24px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.center-msg.is-on { opacity: 1; }
+
+/* ---------- 触屏操作 ---------- */
+
+.touch {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 calc(14px + env(safe-area-inset-left))
+           calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+.pad-left, .pad-right { display: flex; gap: 10px; pointer-events: auto; }
+
+.pad-btn {
+  width: 62px;
+  height: 62px;
+  border: 0;
+  border-radius: 50%;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #e9edf5;
+  background: rgba(30, 36, 47, 0.72);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+}
+
+.pad-btn.is-down { background: rgba(242, 163, 60, 0.85); color: #221a0c; }
+.pad-hit { background: rgba(207, 74, 38, 0.72); }
+.pad-kick { background: rgba(160, 60, 150, 0.72); }
+.pad-brake { background: rgba(50, 60, 78, 0.72); font-size: 13px; }
+
+/* 有真键盘的设备(能 hover)就不显示触屏按钮 */
+@media (hover: hover) and (pointer: fine) {
+  .touch { display: none; }
+}
+
+/* ---------- 弹层 ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  background: rgba(8, 10, 15, 0.78);
+  z-index: 20;
+}
+
+.overlay.is-active { display: flex; }
+
+.overlay-card {
+  margin: auto;
+  width: min(440px, 86vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #252b37, #1b2029);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.overlay-card h3 { font-size: 24px; letter-spacing: 4px; margin-bottom: 6px; }
+.overlay-card .sub { font-size: 13px; color: #97a1b3; margin-bottom: 14px; }
+
+.result-rank { font-size: 46px; font-weight: 900; color: #f2a33c; margin: 6px 0; }
+
+.result-rows { margin: 12px 0 16px; font-size: 14px; }
+.result-rows div {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.result-rows span { color: #97a1b3; }
+.result-rows b { font-variant-numeric: tabular-nums; }
+
+.help-list { text-align: left; font-size: 14px; line-height: 1.9; color: #cfd6e2; }
+.help-list b { color: #f2a33c; }
+.help-list kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: center;
+}
+
+.standings { text-align: left; font-size: 13px; margin: 10px 0 16px; }
+.standings div {
+  display: flex;
+  gap: 8px;
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.standings .pos { width: 28px; color: #f2a33c; font-weight: 700; }
+.standings .who { flex: 1; }
+.standings .dot { width: 10px; height: 10px; border-radius: 50%; align-self: center; }
+.standings .me { color: #f2a33c; font-weight: 700; }
+
+/* ---------- 提示条 ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%) translateY(10px);
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: rgba(10, 13, 19, 0.88);
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 30;
+}
+
+.toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 竖屏提醒 ---------- */
+
+.rotate-hint {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #11141b;
+  font-size: 16px;
+  color: #97a1b3;
+  z-index: 40;
+}
+
+@media (orientation: portrait) and (max-width: 820px) {
+  .rotate-hint.is-armed { display: flex; }
+}

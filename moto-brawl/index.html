@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>铁骑狂飙</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#161a22">
+<meta name="description" content="摩托格斗竞速：一边跑圈一边把对手打下车。纯网页，无需安装。">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<!-- 微信/QQ 内置浏览器: 全屏、竖屏解锁、禁止 X5 自作主张缩放 -->
+<meta name="x5-fullscreen" content="true">
+<meta name="full-screen" content="yes">
+<meta name="x5-orientation" content="landscape">
+<meta name="screen-orientation" content="landscape">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- 加载 -->
+  <section class="screen is-active" id="screen-loading">
+    <div class="loading-box">
+      <h1 class="logo">铁骑<span>狂飙</span></h1>
+      <div class="bar"><i id="loadFill"></i></div>
+      <p class="tip" id="loadTip">正在热车…</p>
+    </div>
+  </section>
+
+  <!-- 主菜单 -->
+  <section class="screen" id="screen-home">
+    <div class="home-inner">
+      <h1 class="logo">铁骑<span>狂飙</span></h1>
+      <p class="slogan">油门到底，拳头说话</p>
+
+      <div class="menu">
+        <button class="btn btn-primary" id="btnRace">开始比赛</button>
+        <button class="btn" id="btnGarage">车　　库</button>
+        <button class="btn" id="btnHelp">操作说明</button>
+      </div>
+
+      <div class="wallet">现金 <b id="homeCash">0</b> ·
+        已通过 <b id="homeDone">0</b>/<b id="homeTotal">5</b> 条赛道</div>
+
+      <div class="chips">
+        <button class="chip" id="btnSfx">音效</button>
+        <button class="chip" id="btnEngine">引擎声</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 选赛道 -->
+  <section class="screen" id="screen-tracks">
+    <header class="page-head">
+      <button class="icon-btn" data-nav="home">‹</button>
+      <h2>选择赛道</h2>
+      <span class="head-cash">现金 <b id="trackCash">0</b></span>
+    </header>
+    <div class="track-list scrollable" id="trackList"></div>
+  </section>
+
+  <!-- 车库 -->
+  <section class="screen" id="screen-garage">
+    <header class="page-head">
+      <button class="icon-btn" data-nav="home">‹</button>
+      <h2>车库</h2>
+      <span class="head-cash">现金 <b id="garageCash">0</b></span>
+    </header>
+    <div class="bike-list scrollable" id="bikeList"></div>
+  </section>
+
+  <!-- 比赛 -->
+  <section class="screen" id="screen-race">
+    <canvas id="view"></canvas>
+
+    <div class="hud">
+      <div class="hud-left">
+        <div class="hud-rank"><b id="hudRank">1</b><small id="hudRankTotal">/6</small></div>
+        <div class="hud-time" id="hudTime">0:00.00</div>
+      </div>
+
+      <div class="hud-mid">
+        <div class="progress"><i id="hudProgress"></i></div>
+        <div class="health"><i id="hudHealth"></i></div>
+        <div class="weapon" id="hudWeapon" hidden>钢管 ×<b id="hudWeaponN">0</b></div>
+      </div>
+
+      <div class="hud-right">
+        <div class="hud-speed"><b id="hudSpeed">0</b><small>km/h</small></div>
+        <button class="icon-btn" id="btnPause">‖</button>
+      </div>
+    </div>
+
+    <div class="center-msg" id="centerMsg"></div>
+
+    <!-- 触屏操作。桌面上用 CSS 藏起来 -->
+    <div class="touch" id="touchPad">
+      <div class="pad-left">
+        <button class="pad-btn" data-act="left">◀</button>
+        <button class="pad-btn" data-act="right">▶</button>
+      </div>
+      <div class="pad-right">
+        <button class="pad-btn pad-brake" data-act="brake">刹车</button>
+        <button class="pad-btn pad-hit" data-act="punchLeft">左拳</button>
+        <button class="pad-btn pad-hit" data-act="punchRight">右拳</button>
+        <button class="pad-btn pad-kick" data-act="kickRight">飞踢</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- 通用弹层 -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card" id="overlayCard"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/core.js"></script>
+<script src="js/track.js"></script>
+<script src="js/race.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
