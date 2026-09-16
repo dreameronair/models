@@ -169,15 +169,17 @@
       });
     }
 
-    // 弯道外侧补一排, 提前提示弯向
+    // 弯道外侧立几块提示牌, 提前告诉玩家往哪拐。
+    // 间隔要够大: 每 5 段一块的话, 一个长弯会立出几十块, 缩到近处就是
+    // 一堵黄牌墙, 把路都糊住了。
     for (i = 20; i < n - 20; i++) {
       var s = this.segments[i];
       if (Math.abs(s.curve) < 2.5) continue;
-      if (i % 5 !== 0) continue;
+      if (i % 24 !== 0) continue;
       s.props.push({
         kind: 'sign',
-        offset: s.curve > 0 ? -1.18 : 1.18,
-        scale: 1,
+        offset: s.curve > 0 ? -1.35 : 1.35,
+        scale: 0.7,
         dir: s.curve > 0 ? 1 : -1
       });
     }
