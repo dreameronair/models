@@ -1,0 +1,17 @@
+{
+  "name": "huaqiang-melon-2026",
+  "private": true,
+  "description": "华强买瓜 2026 · 赛博保熟版 — deterministic canvas parody animation rendered to MP4",
+  "scripts": {
+    "tts": "python3 tools/tts.py",
+    "fonts": "python3 tools/fonts.py",
+    "check": "node tools/render.js --check",
+    "render": "node tools/render.js --workers 6",
+    "audio": "python3 tools/audio.py",
+    "mux": "bash tools/mux.sh",
+    "build": "npm run tts && npm run fonts && npm run check && npm run render && npm run audio && npm run mux"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  }
+}
