@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我们的太阳系 · 预览</title>
+<style>
+  html, body { margin: 0; background: #07081c; color: #e8eaf6; font-family: sans-serif; }
+  #stage { display: block; width: 1920px; height: 1080px; }
+  body.preview #stage { width: min(100vw, 177.78vh); height: auto; margin: 0 auto; }
+  #bar { display: none; gap: 12px; align-items: center; padding: 8px 16px; }
+  body.preview #bar { display: flex; }
+  #scrub { flex: 1; }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="bar">
+  <button id="play">播放</button>
+  <input id="scrub" type="range" min="0" step="0.01" value="0">
+  <span id="time">0.0s</span>
+</div>
+<script src="solar.js"></script>
+<script>
+  // Renderer mode (default) only exposes window.ready; ?preview adds an interactive scrubber.
+  window.ready = fetch('../build/timeline.json').then((r) => r.json()).then((tl) => window.solar.init(tl));
+  if (location.search.includes('preview')) {
+    document.body.classList.add('preview');
+    window.ready.then(({ duration }) => {
+      const scrub = document.getElementById('scrub'), time = document.getElementById('time');
+      const audio = new Audio('../build/mix.wav');
+      scrub.max = duration;
+      const show = (t) => { window.solar.seek(t); scrub.value = t; time.textContent = t.toFixed(1) + 's'; };
+      scrub.oninput = () => { audio.currentTime = +scrub.value; show(+scrub.value); };
+      document.getElementById('play').onclick = () => {
+        if (audio.paused) { audio.currentTime = +scrub.value; audio.play(); } else audio.pause();
+      };
+      const loop = () => { if (!audio.paused) show(audio.currentTime); requestAnimationFrame(loop); };
+      loop();
+    });
+  }
+</script>
+</body>
+</html>
